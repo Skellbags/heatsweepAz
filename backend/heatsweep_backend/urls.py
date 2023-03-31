@@ -1,4 +1,4 @@
-"""heatsweep-backend URL Configuration
+"""heatsweep_backend URL Configuration
 
 The `urlpatterns` list routes URLs to views. For more information please see:
     https://docs.djangoproject.com/en/1.11/topics/http/urls/
@@ -15,7 +15,13 @@ Including another URLconf
 """
 from django.conf.urls import url
 from django.contrib import admin
+from rest_framework.routers import DefaultRouter
+
+from .views import *
+
+router = DefaultRouter(trailing_slash=False)
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
+    url(r'^$', BoardView.as_view()),
 ]
