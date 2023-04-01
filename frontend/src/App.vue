@@ -1,47 +1,65 @@
-<script setup lang="ts">
-import HelloWorld from './components/HelloWorld.vue'
-import TheWelcome from './components/TheWelcome.vue'
-</script>
-
 <template>
-  <header>
-    <img alt="Vue logo" class="logo" src="./assets/logo.svg" width="125" height="125" />
-
-    <div class="wrapper">
-      <HelloWorld msg="You did it!" />
-    </div>
-  </header>
-
-  <main>
-    <TheWelcome />
-  </main>
+  <div class="grid-container">
+    <SquareC v-for="(cell, index) in formattedGrid" :key="index" :color="cell"/>
+  </div>
 </template>
 
-<style scoped>
-header {
-  line-height: 1.5;
+<script>
+import { computed } from 'vue'
+import Board from './Board'
+import SquareC from './SquareC'
+
+export default {
+  name: 'App',
+
+  components: {
+    SquareC
+  },
+
+  setup() {
+    const { grid } = Board()
+
+    const formattedGrid = computed(() => {
+      return grid.map(row => {
+        return row.map(cell => {
+          switch (cell) {
+            case 0:
+              return 'white'
+            case 1:
+              return 'red'
+            case 2:
+              return 'green'
+            case 3:
+              return 'blue'
+          }
+        })
+      })
+    })
+
+    return {
+      formattedGrid
+    }
+  }
+}
+</script>
+
+<style>
+.grid-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
 }
 
-.logo {
-  display: block;
-  margin: 0 auto 2rem;
+.row {
+  display: flex;
 }
 
-@media (min-width: 1024px) {
-  header {
-    display: flex;
-    place-items: center;
-    padding-right: calc(var(--section-gap) / 2);
-  }
-
-  .logo {
-    margin: 0 2rem 0 0;
-  }
-
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
-  }
+.cell {
+  width: 50px;
+  height: 50px;
+  margin: 2px;
 }
 </style>
+
