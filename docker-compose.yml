@@ -12,8 +12,8 @@ services:
   backend:
     build: 
       context: ./backend
-    # volumes:
-    #   - .:/code
+    volumes:
+      - ./backend:/code
     ports:
       - "8000:8000"
     environment:
@@ -25,6 +25,8 @@ services:
   frontend:
     build: 
       context: ./frontend
+    volumes:
+      - ./frontend:/app
     ports:
       - "8080:5173"
     command: npm run dev

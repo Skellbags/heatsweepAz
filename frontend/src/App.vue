@@ -15,22 +15,13 @@ export default {
   components: {
     SquareC
   },
-  data: {
-    return {
-      grid: null
-    }
-  }
-  setup() {
-    const backend = "http://localhost:8000/game/1"
 
-    const updateGrid = axios
-      .get(backend)
-      .then(response => (this.grid = response['tiles']))
+  setup() {
+    const { grid } = Board()
 
     const formattedGrid = computed(() => {
-      if (this.grid == null)
-      return this.grid.map(row => {
-        return this.row.map(cell => {
+      return grid.map(row => {
+        return row.map(cell => {
           switch (cell) {
             case 0:
               return 'white'
