@@ -7,7 +7,7 @@
 <script>
 import { computed } from 'vue'
 import Board from './Board'
-import SquareC from './SquareC'
+import SquareC from './SquareC.vue'
 
 export default {
   name: 'App',
@@ -15,13 +15,22 @@ export default {
   components: {
     SquareC
   },
-
+  data: {
+    return {
+      grid: null
+    }
+  }
   setup() {
-    const { grid } = Board()
+    const backend = "http://localhost:8000/game/1"
+
+    const updateGrid = axios
+      .get(backend)
+      .then(response => (this.grid = response['tiles']))
 
     const formattedGrid = computed(() => {
-      return grid.map(row => {
-        return row.map(cell => {
+      if (this.grid == null)
+      return this.grid.map(row => {
+        return this.row.map(cell => {
           switch (cell) {
             case 0:
               return 'white'

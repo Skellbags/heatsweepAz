@@ -3,8 +3,8 @@ version: '3'
 services:
   db:
     image: postgres
-    volumes:
-      - ./data/db:/var/lib/postgresql/data
+    # volumes:
+    #   - ./data/db:/var/lib/postgresql/data
     environment:
       - POSTGRES_DB=postgres
       - POSTGRES_USER=postgres
@@ -12,9 +12,8 @@ services:
   backend:
     build: 
       context: ./backend
-    command: python3 backend/manage.py runserver 0.0.0.0:8000
-    volumes:
-      - .:/code
+    # volumes:
+    #   - .:/code
     ports:
       - "8000:8000"
     environment:
