@@ -17,11 +17,15 @@ from django.conf.urls import url
 from django.contrib import admin
 from rest_framework.routers import DefaultRouter
 
-from .views import *
+from heatsweep_backend.heatsweep.views import *
 
 router = DefaultRouter(trailing_slash=False)
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
-    url(r'^$', BoardView.as_view()),
+    url(r'^game/create/(?P<username>.+)/$', GameView.as_view()),
+    url(r'^game/(?P<id>.+)/$', GameView.as_view()),
+    url(r'^lobby/join/(?P<game_id>.+)/(?P<username>.+)/$', LobbyView.as_view()),
+    url(r'^lobby/$', LobbyView.as_view()),
+    url(r'^player/(?P<username>.+)/$', PlayerView.as_view()),
 ]
