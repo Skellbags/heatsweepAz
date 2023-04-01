@@ -1,4 +1,5 @@
 from django.db import models
+import math
 from random import randrange
 
 class Player(models.Model):
@@ -6,6 +7,18 @@ class Player(models.Model):
     wins = models.IntegerField(default=0)
     losses = models.IntegerField(default=0)
     elo = models.IntegerField(default=1000)
+
+    def update_elo(self, elo):
+        self.elo = elo
+        self.save(update_fields=['elo'])
+
+    def incr_wins(self):
+        self.wins = self.wins + 1
+        self.save(update_fields=['wins'])
+
+    def incr_losses(self):
+        self.losses = self.losses + 1
+        self.save(update_fields=['losses'])
 
 class Tile(models.Model):
     EMPTY = 'none'
@@ -31,71 +44,78 @@ class Tile(models.Model):
     Automatically reveals the tile to player 1/player 2 if they are set as the new owner
     '''
     def set_status(self, status):
-        # check if anything needs to be updated first
-        if status != self.status:
-            self.status = status
-            self.save(update_fields=['status'])
+        if status != Tile.EMPTY:
+            return False
+        self.status = status
+        self.save(update_fields=['status'])
 
-            # reveal the tile if applicable
-            if status == Tile.A:
-                self.reveal_a()
-            elif status == Tile.B:
-                self.reveal_b()
+        # # reveal the tile if applicable
+        # if status == Tile.A:
+        #     self.reveal_a()
+        # elif status == Tile.B:
+        #     self.reveal_b()
         return True
     
     '''
     Reveals the tile to player a.
     '''
     def reveal_a(self):
-        if not self.a_revealed:
-            self.a_revealed = True
-            self.save(update_fields=['p1shown'])
-        return True
+        # if not self.a_revealed:
+        #     self.a_revealed = True
+        #     self.save(update_fields=['a_revealed'])
+        pass
     
     '''
     Reveals the tile to player b.
     '''
     def reveal_b(self):
-        if not self.b_revealed:
-            self.b_revealed = True
-            self.save(update_fields=['p2shown'])
-        return True
-    
+        # if not self.b_revealed:
+        #     self.b_revealed = True
+        #     self.save(update_fields=['b_revealed'])
+        pass
+
     '''
     Reveals the tile to the given player.
     '''
     def reveal(self, player):
-        if player == self.A:
-            self.reveal_a()
-        elif player == self.B:
-            self.reveal_b()
-        else:
-            raise ValueError("invalid player value passed to Tile.reveal()")
+        # if player == self.A:
+        #     self.reveal_a()
+        # elif player == self.B:
+        #     self.reveal_b()
+        # else:
+        #     raise ValueError("invalid player value passed to Tile.reveal()")
+        pass
         
     '''
     Getter method for the revealed state of the tile.
     '''
     def revealed(self, player):
-        if player == self.A:
-            return self.a_revealed
-        elif player == self.B:
-            return self.b_revealed
-        else:
-            raise ValueError("invalid player value passed to Tile.reveal()")
+        # if player == self.A:
+        #     return self.a_revealed
+        # elif player == self.B:
+        #     return self.b_revealed
+        # else:
+        #     raise ValueError("invalid player value passed to Tile.reveal()")
+        pass
 
 class Game(models.Model):
     GRID_SIZE = 10
     GRID_X = 10
     GRID_Y = 10
     MARGIN = 3
+    ELO_FACTOR = 30
+    
     player_a = models.ForeignKey(Player, related_name="game_player_a", null=True, blank=True)
     player_b = models.ForeignKey(Player, related_name="game_player_b", null=True, blank=True)
     current_turn = models.ForeignKey(Player, related_name="game_turn", null=True, blank=True)
     winner = models.ForeignKey(Player, related_name='game_winner', null=True, blank=True)
     
-    hotspot = models.ForeignKey(Tile, related_name='game_hotspot', null=True, blank=True)
-    a_start = models.ForeignKey(Tile, related_name='game_a_start', null=True, blank=True)
-    b_start = models.ForeignKey(Tile, related_name='game_b_start', null=True, blank=True)
+    a_x = models.IntegerField(default=0)
+    a_y = models.IntegerField(default=0)
+    b_x = models.IntegerField(default=0)
+    b_y = models.IntegerField(default=0)
+    hotspot_x = models.IntegerField(default=0)
+    hotspot_y = models.IntegerField(default=0)
 
     @staticmethod
     def create(player):
@@ -120,6 +140,7 @@ class Game(models.Model):
             return Tile.B
         else:
             raise ValueError("passing invalid player to toStatus")
+        return game        
 
     def get_all_tiles(self):
         return Tile.objects.filter(game=self)
@@ -143,7 +164,8 @@ class Game(models.Model):
 
         tile = self.get_tile_at(x, y)
 
-        if (x == self.hotspot.x and y == self.hotspot.y):
+        status = Tile.A
+        if (x == self.hotspot_x and y == self.hotspot_y):
             status = Tile.H
         elif (player == self.player_a):
             status = Tile.A
@@ -154,36 +176,44 @@ class Game(models.Model):
             return False
 
         self.next_turn()
-        self.save()
         return True
 
     def init_start_points(self):
-        # initialize grid
-        for _ in range(0, self.GRID_Y):
-            row = []
-            for _ in range(0, self.GRID_X):
-                row.append(Tile())
-            self.grid.append(row)
-
         # randomly pick player starting points and set the status of their tiles
         # both points in middle half, a is on top 4th, b bottom 4th
-        self.a_x = randrange(self.GRID_X/4,3*self.GRID_X/4-1)
-        self.a_y = randrange(0,self.GRID_Y/4)
-        self.b_x = randrange(self.GRID_X/4,3*self.GRID_X/4-1)
-        self.b_y = randrange(0,self.GRID_Y/4)
-        self.get_tile_at(self.a_x, self.a_y).set_status(Tile.A)
-        self.get_tile_at(self.a_x, self.a_y).set_status(Tile.B)
+        # a_x = randrange(Game.GRID_X/4,3*Game.GRID_X/4-1)
+        # a_y = randrange(0,Game.GRID_Y/4)
+        # b_x = randrange(Game.GRID_X/4,3*Game.GRID_X/4-1)
+        # b_y = randrange(0,Game.GRID_Y/4)
+        
+        corners = (0, Game.GRID_SIZE-1)
+        a_x = corners[randrange(0,2)]
+        a_y = corners[randrange(0,2)]
+        b_x = corners[randrange(0,2)]
+        b_y = corners[randrange(0,2)]
+        
+        while (b_x == a_x and b_y == a_y):
+            b_x = corners[randrange(0,2)]
+            b_y = corners[randrange(0,2)]
+
+        self.get_tile_at(a_x, a_y).set_status(Tile.A)
+        self.get_tile_at(b_x, b_y).set_status(Tile.B)
 
         # TODO TODO TODO: get rid of these? a_start, b_start, and hotspot all seem unnecessary
-        self.a_start = self.get_tile_at(self.a_x, self.a_y)
-        self.a_start.set_status(Tile.A)
+        a_start = self.get_tile_at(self.a_x, self.a_y)
+        a_start.set_status(Tile.A)
 
-        self.b_start = self.get_tile_at(self.b_x, self.b_y)
-        self.b_start.set_status(Tile.B)
+        b_start = self.get_tile_at(b_x, b_y)
+        b_start.set_status(Tile.B)
+
+        self.a_x = a_x
+        self.a_y = a_y
+        self.b_x = b_x
+        self.b_y = b_y
 
         # TODO TODO TODO: updpate to better hotspot algorithm below
-        self.h_x = randrange(0, Game.GRID_SIZE-(Game.MARGIN*2)-1) + Game.MARGIN
-        self.h_y = randrange(0, Game.GRID_SIZE-(Game.MARGIN*2)-1) + Game.MARGIN
+        self.hotspot_x = randrange(0, Game.GRID_SIZE-(Game.MARGIN*2)-1) + Game.MARGIN
+        self.hotspot_y = randrange(0, Game.GRID_SIZE-(Game.MARGIN*2)-1) + Game.MARGIN
 
         '''
         # hotspot should be equidistant from both players
@@ -197,8 +227,8 @@ class Game(models.Model):
         self.h_y = slope(self.h_x - midpoint.first) + midpoint.second 
         '''
 
-        self.hotspot = self.get_tile_at(self.h_x, self.h_y) # TODO TODO TODO: get rid of this?
         # self.hotspot.set_status(Tile.H) TODO: readd this once fog of war comes back
+        self.save()
 
     '''
     Returns a list of the coordinates adjacent to (x, y) that are within the grid.
@@ -209,12 +239,12 @@ class Game(models.Model):
             if 0 <= xi < self.GRID_X and 0 <= yi < self.GRID_Y: 
                 coords.append(xi, yi)
         
-    '''
-    Reveals tiles adjacent to (x, y) to the given player.
-    '''
-    def reveal_adjacent(self, x, y, player):
-        for (xi, yi) in self.valid_adjacent_coords(x, y):
-            self.get_tile_at(xi, yi).reveal(player)
+    # '''
+    # Reveals tiles adjacent to (x, y) to the given player.
+    # '''
+    # def reveal_adjacent(self, x, y, player):
+    #     for (xi, yi) in self.valid_adjacent_coords(x, y):
+    #         self.get_tile_at(xi, yi).reveal(player)
 
     '''
     Gives input player ownership of any unowned tiles adjacent to the tile at (x, y).
@@ -263,6 +293,7 @@ class Game(models.Model):
 
     def process_adjacent(self, x, y, player, checked):
         checked[y][x] = 1 # mark current coord as checked
+
         for (xi, yi) in self.get_adjacent(x, y):
             # base case: hotspot is adjacent to us
             if (xi, yi) == (self.h_x, self.h_y):
@@ -276,9 +307,11 @@ class Game(models.Model):
         # base case: no path to hotspot
         return False
 
-    def check_win(self, player: str):
+    def check_win(self, player):
         # step 0: check if the player can see the hotspot
-        if not self.get_tile_at(self.h_x, self.h_y).revealed(player):
+        # if not self.get_tile_at(self.h_x, self.h_y).revealed(player):
+        #     return False
+        if self.get_tile_at(self.hotspot_x, self.hotspot_y).status != Tile.H:
             return False
         
         # recursively build out pathway from hotspot
@@ -292,6 +325,25 @@ class Game(models.Model):
         if self.check_win(self.current_turn):
             self.winner = self.current_turn
 
-        current_turn = self.player_a if current_turn == self.player_b else self.player_b
+            a_e = self.player_a.elo
+            b_e = self.player_b.elo
+
+            a_r = (1.0 / (1.0 + pow(10.0, ((b_e-a_e) / 400.0)))) 
+            b_r = (1.0 / (1.0 + pow(10.0, ((a_e-b_e) / 400.0))))
+            if self.winner == self.player_a:
+                a_e = math.floor(a_e + Game.ELO_FACTOR*(1.0 - a_r))
+                b_e = math.floor(b_e + Game.ELO_FACTOR*(0.0 - b_r))
+                self.player_a.incr_wins()
+                self.player_b.incr_losses()
+            else:
+                a_e = math.floor(a_e + Game.ELO_FACTOR*(0.0 - a_r))
+                b_e = math.floor(a_e + Game.ELO_FACTOR*(1.0 - b_r))
+                self.player_a.incr_losses()
+                self.player_b.incr_wins()
+            self.player_a.update_elo(a_e)
+            self.player_b.update_elo(b_e)
+        else:
+            self.current_turn = self.player_a if self.current_turn == self.player_b else self.player_b
+        self.save()
 
     
