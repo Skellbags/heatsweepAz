@@ -1,6 +1,5 @@
 import Vue from 'vue'
 
-
 export default class CookieHandler extends Vue {
   /**
    * Set a cookie with the specified name, value, and expiration time

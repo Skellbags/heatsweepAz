@@ -24,7 +24,7 @@ class Tile(models.Model):
     EMPTY = 'none'
     A = 'a'
     B = 'b'
-    H = 'hotspot'
+    H = 'h'
     TILE_CHOICES = (
         (EMPTY, 'None'),
         (A, 'A'),
@@ -100,10 +100,10 @@ class Tile(models.Model):
         pass
 
 class Game(models.Model):
-    GRID_SIZE = 10
-    GRID_X = 10
-    GRID_Y = 10
-    MARGIN = 3
+    GRID_SIZE = 5
+    GRID_X = GRID_SIZE
+    GRID_Y = GRID_SIZE
+    MARGIN = 1
     ELO_FACTOR = 30
     
     player_a = models.ForeignKey(Player, related_name="game_player_a", null=True, blank=True, on_delete=models.CASCADE)
@@ -225,9 +225,9 @@ class Game(models.Model):
         # TODO: this technically needs integer solutions to be perfectly fair always. Otherwise off by 1
         # first pick the x-coord of the hotspot, then find the y-coord using point-slope form
         midpoint = ((self.b_x - self.a_x)/2, (self.b_y - self.a_y)/2)
-        self.h_x = randrange(-self.GRID_X/4, self.GRID_X/4)
+        self.hotspot_x = randrange(-self.GRID_X/4, self.GRID_X/4)
         slope = -self.a_x/self.a_y
-        self.h_y = slope(self.h_x - midpoint.first) + midpoint.second 
+        self.hotspot_y = slope(self.hotspot_x - midpoint.first) + midpoint.second 
         '''
 
         # self.hotspot.set_status(Tile.H) TODO: readd this once fog of war comes back
@@ -299,7 +299,7 @@ class Game(models.Model):
 
         for (xi, yi) in self.get_adjacent(x, y):
             # base case: hotspot is adjacent to us
-            if (xi, yi) == (self.h_x, self.h_y):
+            if (xi, yi) == (self.hotspot_x, self.hotspot_y):
                 return True
             
             if checked[yi][xi] == 0 and self.get_tile_at(xi, yi).status == player:
@@ -312,7 +312,7 @@ class Game(models.Model):
 
     def check_win(self, player):
         # step 0: check if the player can see the hotspot
-        # if not self.get_tile_at(self.h_x, self.h_y).revealed(player):
+        # if not self.get_tile_at(self.hotspot_x, self.hotspot_y).revealed(player):
         #     return False
         if self.get_tile_at(self.hotspot_x, self.hotspot_y).status != Tile.H:
             return False

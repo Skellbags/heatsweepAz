@@ -62,8 +62,6 @@ class LobbyView(APIView):
 
         if game.player_b != None:
             return Response({'error': 'Cannot join full game'}, status=status.HTTP_400_BAD_REQUEST)
-        elif game.player_a == player:
-            return Response({'error': 'Cannot join your own game'}, status=status.HTTP_400_BAD_REQUEST)
             
         game.player_b = player
         game.save()

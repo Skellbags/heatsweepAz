@@ -1,5 +1,6 @@
 <template>
   <div class="board">
+    <!-- <h1>Game Board (#{{ game.id }})</h1> -->
     <div class="grid">
       <button
         v-for="(tile, index) in tiles"
@@ -32,10 +33,14 @@ export default defineComponent({
 </script>
 
 <style scoped>
+h1 {
+    font-size: 50px;
+    text-align: center;
+}
 .grid {
   display: grid;
-  grid-template-columns: repeat(10, 3rem);
-  grid-template-rows: repeat(10, 3rem);
+  grid-template-columns: repeat(5, 3rem);
+  grid-template-rows: repeat(5, 3rem);
   grid-gap: 0.3rem;
 }
 button {
