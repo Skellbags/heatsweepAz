@@ -1,6 +1,8 @@
 import numpy as np
+from random import randrange
 import numpy.random
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 
 '''
 # Generate some test data
@@ -15,7 +17,9 @@ plt.imshow(heatmap.T, extent=extent, origin='lower')
 plt.show()
 '''
 
-def generateHeatmap(size):
+GRID_SIZE = 50
+
+def generateHeatmap(size, show=False):
     # Create a numpy array to store the heatmap
     heatmap = np.zeros((size, size))
 
@@ -43,12 +47,43 @@ def generateHeatmap(size):
 
     # Clip the heatmap values to the range [0, 1]
     heatmap = np.clip(heatmap, 0, 1)
+
+    # Map the heatmap values to RGB values using the 'hot' colormap
+    cmap = mcolors.ListedColormap(plt.cm.hot(np.linspace(0, 1, 256)))
+    rgba_heatmap = cmap(heatmap)
+
+    if show:
+        for x in range(0, GRID_SIZE, 8):
+            for y in range(0, GRID_SIZE, 8):
+                print(f"Color at ({x}, {y}): {getColor(heatmap[x][y])}")
+
+        # Display the heatmap using matplotlib
+        plt.imshow(heatmap, cmap='hot', interpolation='nearest')
+        plt.colorbar()
+        plt.show()
+
+        # Create a second plot to display the RGB values of the heatmap
+        fig, ax = plt.subplots()
+        ax.imshow(rgba_heatmap, interpolation='nearest')
+        ax.set_title('RGB Values')
+        plt.show()
+
     return heatmap
 
-if __name__ == "__main__":
-    heatmap = generateHeatmap(50)
+def getColor(heatValue):
+    # Define the colormap and normalization function
+    cmap = plt.get_cmap('hot')
+    norm = mcolors.Normalize(vmin=0, vmax=1)
+    
+    # Convert the normalized heat value to an RGB color
+    color = cmap(heatValue)
+    
+    # Convert the RGB color to a hex color code
+    hex_color: mcolors.rgb2hex = mcolors.rgb2hex(color)
+    
+    return hex_color
 
-    # Display the heatmap using matplotlib
-    plt.imshow(heatmap, cmap='hot', interpolation='nearest')
-    plt.colorbar()
-    plt.show()
+
+if __name__ == "__main__":
+    heatmap = generateHeatmap(GRID_SIZE, show=True)
+    
