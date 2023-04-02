@@ -1,11 +1,12 @@
 <template>
   <div class="board">
     <div v-if="game && game.player_a" class="player-info-container">
-      <h2>Player A <span style="color: #008f39">◼</span></h2>
-      <h3>Username: {{ game.player_a.username }}</h3>
+      <h2>{{ game.player_a.username }} <span style="color: #2eb52e">◼</span></h2>
+      <h3>Player A</h3>
     </div>
     <div class="grid">
-      <button :class="['board-tile', tile.status == 'a' ? 'a-tile' : (tile.status == 'b' ? 'b-tile' : '')]"
+      <button :class="['board-tile', tile.status == 'a' ? 'a-tile' : (tile.status == 'b' ? 'b-tile' : ''), 
+    tile.x == game.a_x && tile.y == game.a_y ? 'a-start' : (tile.x == game.b_x && tile.y == game.b_y ? 'b-start' : '')]"
           :style="{'background-color': tile.heat_value}"
           v-for="(tile, index) in tiles"
           :key="index"
@@ -14,8 +15,8 @@
       </button>
     </div>
     <div v-if="game && game.player_b" class="player-info-container">
-      <h2>Player B<span style="color: #944dff">◼</span></h2>
-      <h3>Username: {{ game.player_b.username }}</h3>
+      <h2>{{ game.player_b.username }} <span style="color: #5c5cff">◼</span></h2>
+      <h3>Player B</h3>
     </div>
     <h1 v-if="winner">{{ winner }}</h1>
   </div>
@@ -51,6 +52,11 @@ export default defineComponent({
 </script>
 
 <style scoped>
+:root {
+  --a: #5cff5c;
+  --b: #5c5cff;
+}
+
 h1 {
     font-size: 30px;
     text-align: center;
@@ -60,21 +66,39 @@ h1 {
   grid-template-columns: repeat(7, 3rem);
   grid-template-rows: repeat(7, 3rem);
   grid-gap: 0.3rem;
+  margin-top: 20px;
+  margin-bottom: 20px;
+  padding: 20px;
+  border-radius: 10px;
+  /*background-image: linear-gradient(to top right, rgb(115, 115, 226), rgb(177, 174, 204));*/
 }
 button {
   font-size: 1rem;
   font-family: monospace;
 }
-.a-tile {
-  border-color: #008f39
-}
-.b-tile {
-  border-color: #944dff
-}
 .board-tile {
-  border-radius: 4px;
+  /** border-radius: 4px;
+  border-style: solid;
+  border-width: 4px; **/
+  cursor: pointer; 
+  border-style: solid;
+  border-width: 1px;
+  border-radius: 2px;
+}
+.a-tile {
   border-style: solid;
   border-width: 4px;
-  cursor: pointer;
+  border-color: #2eb52e;
+}
+.b-tile {
+  border-style: solid;
+  border-width: 4px;
+  border-color: #5c5cff;
+}
+.a-start {
+  background-color: #2eb52e !important;
+}
+.b-start {
+  background-color: #5c5cff !important;
 }
 </style>

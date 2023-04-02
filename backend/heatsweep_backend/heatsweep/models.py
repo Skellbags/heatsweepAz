@@ -37,7 +37,7 @@ class Tile(models.Model):
     x = models.IntegerField()
     y = models.IntegerField()
     index = models.IntegerField()
-    heat_value = models.CharField(max_length=7, default="#000000")
+    heat_value = models.CharField(max_length=7, default="#CCCCCC")
     a_revealed = models.BooleanField(default=False)
     b_revealed = models.BooleanField(default=False)
     game = models.ForeignKey('heatsweep.Game', related_name="tile_game", on_delete=models.CASCADE)
@@ -308,10 +308,13 @@ class Game(models.Model):
     # I'm sure there's a cleaner way to do this but honestly this is the most readable I can do
     def get_adjacent(self, x, y):
         coords = []
-        for xi in [x-1, x, x+1]:
-            for yi in [y-1, y, y+1]:
-                if 0 <= xi < self.GRID_X and 0 <= yi < self.GRID_Y and not (x == y and xi == x): # make sure coords within grid
-                    coords.append((xi, yi))
+        #for xi in [x-1, x, x+1]:
+        #    for yi in [y-1, y, y+1]:
+        #        if 0 <= xi < self.GRID_X and 0 <= yi < self.GRID_Y and not (x == y and xi == x): # make sure coords within grid
+        #            coords.append((xi, yi))
+        for (xi, yi) in [(x-1, y), (x, y-1), (x+1, y), (x, y+1)]:
+           if 0 <= xi < self.GRID_X and 0 <= yi < self.GRID_Y:
+                coords.append((xi, yi))
         return coords
 
     def process_adjacent(self, x, y, player, checked):
