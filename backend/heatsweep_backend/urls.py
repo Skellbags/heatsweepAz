@@ -24,7 +24,7 @@ router = DefaultRouter(trailing_slash=False)
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'^game/create/(?P<username>.+)/$', CreateGameView.as_view()),
-    url(r'^game/flip/(?P<id>.+)/(?P<username>.+)/(?P<x>.+)/(?P<y>.+)/$', GameView.as_view()),
+    url(r'^game/flip/(?P<id>.+)/(?P<username>.+)/(?P<index>.+)/$', GameView.as_view()),
     url(r'^game/(?P<id>.+)/$', GameView.as_view()),
     url(r'^lobby/join/(?P<game_id>.+)/(?P<username>.+)/$', LobbyView.as_view()),
     url(r'^lobby/$', LobbyView.as_view()),

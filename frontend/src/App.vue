@@ -1,44 +1,51 @@
 <template>
   <div class="grid-container">
-    <SquareC v-for="(cell, index) in formattedGrid" :key="index" :color="cell"/>
+    <Board v-if="state" :game="state.game" :tiles="state.tiles" :handler="handler"/>
   </div>
 </template>
 
-<script>
-import { computed } from 'vue'
-import Board from './Board'
-import SquareC from './SquareC.vue'
+<script lang="ts">
+import axios from 'axios';
+import Board from './Board.vue'
+
+const BACKEND = "http://localhost:8000"
 
 export default {
   name: 'App',
 
   components: {
-    SquareC
+    Board
   },
-
-  setup() {
-    const { grid } = Board()
-
-    const formattedGrid = computed(() => {
-      return grid.map(row => {
-        return row.map(cell => {
-          switch (cell) {
-            case 0:
-              return 'white'
-            case 1:
-              return 'red'
-            case 2:
-              return 'green'
-            case 3:
-              return 'blue'
-          }
-        })
-      })
-    })
-
+  data() {
     return {
-      formattedGrid
+      state: {
+        game: null,
+        tiles: null
+      },
+      poller: 0    
     }
+  },
+  methods: {
+    handler: function(index:number) {
+      axios.post(BACKEND + `/game/flip/10/test1/${index}/`)
+      .then(response => console.log(response))
+      .then(_ => this.poll)
+      .catch(error => {
+        console.error(error);
+      });
+    },
+    poll: function() {
+      axios.get(BACKEND + `/game/10/`)
+      .then(response => {
+        this.state = response.data
+      })
+    }
+  },
+  mounted() {
+    this.poller = setInterval(this.poll, 500)
+  },
+  unmounted() {
+    clearInterval(this.poller)
   }
 }
 </script>

@@ -47,7 +47,7 @@ class GameView(APIView):
         if (player != game.player_a and player != game.player_b):
             return Response({'error': 'Player has not joined game'}, status=status.HTTP_400_BAD_REQUEST)
 
-        status = game.flip(kwargs['x'], kwargs['y'], player)
+        status = game.flip(kwargs['index'], player)
         return Response({'status': 'true' if status else 'false'})
 
 class LobbyView(APIView):

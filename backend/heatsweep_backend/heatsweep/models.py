@@ -34,20 +34,21 @@ class Tile(models.Model):
     status = models.CharField(max_length=6, choices=TILE_CHOICES, default=EMPTY)
     x = models.IntegerField()
     y = models.IntegerField()
+    index = models.IntegerField()
     heat_value = models.FloatField(default=0.0)
     a_revealed = models.BooleanField(default=False)
     b_revealed = models.BooleanField(default=False)
-    game = models.ForeignKey('heatsweep.Game', related_name="tile_game")
+    game = models.ForeignKey('heatsweep.Game', related_name="tile_game", on_delete=models.CASCADE)
 
     '''
     Setter method to update the status of a Tile
     Automatically reveals the tile to player 1/player 2 if they are set as the new owner
     '''
     def set_status(self, status):
-        if status != Tile.EMPTY:
+        if self.status != Tile.EMPTY:
             return False
         self.status = status
-        self.save(update_fields=['status'])
+        self.save()
 
         # # reveal the tile if applicable
         # if status == Tile.A:
@@ -105,10 +106,10 @@ class Game(models.Model):
     MARGIN = 3
     ELO_FACTOR = 30
     
-    player_a = models.ForeignKey(Player, related_name="game_player_a", null=True, blank=True)
-    player_b = models.ForeignKey(Player, related_name="game_player_b", null=True, blank=True)
-    current_turn = models.ForeignKey(Player, related_name="game_turn", null=True, blank=True)
-    winner = models.ForeignKey(Player, related_name='game_winner', null=True, blank=True)
+    player_a = models.ForeignKey(Player, related_name="game_player_a", null=True, blank=True, on_delete=models.CASCADE)
+    player_b = models.ForeignKey(Player, related_name="game_player_b", null=True, blank=True, on_delete=models.CASCADE)
+    current_turn = models.ForeignKey(Player, related_name="game_turn", null=True, blank=True, on_delete=models.CASCADE)
+    winner = models.ForeignKey(Player, related_name='game_winner', null=True, blank=True, on_delete=models.CASCADE)
     
     a_x = models.IntegerField(default=0)
     a_y = models.IntegerField(default=0)
@@ -123,7 +124,8 @@ class Game(models.Model):
         game.save()
         for x in range(Game.GRID_SIZE):
             for y in range(Game.GRID_SIZE):
-                tile = Tile(x=x, y=y, game=game)
+                i = (Game.GRID_SIZE*y) + x
+                tile = Tile(x=x, y=y, index=i, game=game)
                 tile.save()
         game.init_start_points()
 
@@ -143,11 +145,17 @@ class Game(models.Model):
         return game        
 
     def get_all_tiles(self):
-        return Tile.objects.filter(game=self)
+        return Tile.objects.filter(game=self).order_by('index')
 
     def get_tile_at(self, x, y):
         try:
             return Tile.objects.get(game=self, x=x, y=y)
+        except Tile.DoesNotExist:
+            return None
+
+    def get_tile(self, index):
+        try:
+            return Tile.objects.get(game=self, index=index)
         except Tile.DoesNotExist:
             return None
 
@@ -158,11 +166,13 @@ class Game(models.Model):
 
     This is the basic, non-fog-of-war approach.
     '''
-    def flip(self, x, y, player):
+    def flip(self, index, player):
         if (self.current_turn != player):
             return False
 
-        tile = self.get_tile_at(x, y)
+        tile = self.get_tile(index)
+        x = tile.x
+        y = tile.y
 
         status = Tile.A
         if (x == self.hotspot_x and y == self.hotspot_y):
@@ -199,13 +209,6 @@ class Game(models.Model):
         self.get_tile_at(a_x, a_y).set_status(Tile.A)
         self.get_tile_at(b_x, b_y).set_status(Tile.B)
 
-        # TODO TODO TODO: get rid of these? a_start, b_start, and hotspot all seem unnecessary
-        a_start = self.get_tile_at(self.a_x, self.a_y)
-        a_start.set_status(Tile.A)
-
-        b_start = self.get_tile_at(b_x, b_y)
-        b_start.set_status(Tile.B)
-
         self.a_x = a_x
         self.a_y = a_y
         self.b_x = b_x
@@ -230,48 +233,48 @@ class Game(models.Model):
         # self.hotspot.set_status(Tile.H) TODO: readd this once fog of war comes back
         self.save()
 
-    '''
-    Returns a list of the coordinates adjacent to (x, y) that are within the grid.
-    '''
-    def valid_adjacent_coords(self, x, y):
-        coords = []
-        for (xi, yi) in [(x-1, y), (x, y+1), (x+1, y), (x, y-1)]:
-            if 0 <= xi < self.GRID_X and 0 <= yi < self.GRID_Y: 
-                coords.append(xi, yi)
+    # '''
+    # Returns a list of the coordinates adjacent to (x, y) that are within the grid.
+    # '''
+    # def valid_adjacent_coords(self, x, y):
+    #     coords = []
+    #     for (xi, yi) in [(x-1, y), (x, y+1), (x+1, y), (x, y-1)]:
+    #         if 0 <= xi < self.GRID_X and 0 <= yi < self.GRID_Y: 
+    #             coords.append(xi, yi)
         
+    # # '''
+    # # Reveals tiles adjacent to (x, y) to the given player.
+    # # '''
+    # # def reveal_adjacent(self, x, y, player):
+    # #     for (xi, yi) in self.valid_adjacent_coords(x, y):
+    # #         self.get_tile_at(xi, yi).reveal(player)
+
     # '''
-    # Reveals tiles adjacent to (x, y) to the given player.
+    # Gives input player ownership of any unowned tiles adjacent to the tile at (x, y).
     # '''
-    # def reveal_adjacent(self, x, y, player):
+    # def flip_adjacent(self, x, y, player):
     #     for (xi, yi) in self.valid_adjacent_coords(x, y):
-    #         self.get_tile_at(xi, yi).reveal(player)
+    #         tile = self.get_tile_at(xi, yi)
+    #         if tile.status == Tile.EMPTY:
+    #             tile.set_status(self.toStatus(player))
+    #         self.reveal_adjacent(xi, yi, player)
 
-    '''
-    Gives input player ownership of any unowned tiles adjacent to the tile at (x, y).
-    '''
-    def flip_adjacent(self, x, y, player):
-        for (xi, yi) in self.valid_adjacent_coords(x, y):
-            tile = self.get_tile_at(xi, yi)
-            if tile.status == Tile.EMPTY:
-                tile.set_status(self.toStatus(player))
-            self.reveal_adjacent(xi, yi, player)
+    # '''
+    # Gives player ownership of tile at (x, y). If that tile is unowned (and not the hotspot), 
+    # flip any unowned adjacent tiles as well.
 
-    '''
-    Gives player ownership of tile at (x, y). If that tile is unowned (and not the hotspot), 
-    flip any unowned adjacent tiles as well.
+    # All tiles adjacent to those just flipped will be revealed to the player as well.
 
-    All tiles adjacent to those just flipped will be revealed to the player as well.
+    # Note: "adjacent" does not include diagonals here.
+    # '''
+    # def flipFogOfWar(self, x, y, player):
+    #     tile = self.get_tile_at(x, y) # get the tile
 
-    Note: "adjacent" does not include diagonals here.
-    '''
-    def flipFogOfWar(self, x, y, player):
-        tile = self.get_tile_at(x, y) # get the tile
-
-        # if this grid space is empty, flip adjacent tiles as well (not diagonal)
-        if tile.status == Tile.EMPTY:
-            self.flip_adjacent(x, y, player)
+    #     # if this grid space is empty, flip adjacent tiles as well (not diagonal)
+    #     if tile.status == Tile.EMPTY:
+    #         self.flip_adjacent(x, y, player)
         
-        tile.set_status(self.toStatus(player)) # flip the tile
+    #     tile.set_status(self.toStatus(player)) # flip the tile
 
     # =+++++++++++++++++=
     # WIN CONDITION LOGIC

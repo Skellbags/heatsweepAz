@@ -16,4 +16,4 @@ class GameSerializer(serializers.ModelSerializer):
 class TileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tile
-        fields = ('status', 'x', 'y', 'heat_value')
+        fields = ('status', 'index', 'heat_value')
