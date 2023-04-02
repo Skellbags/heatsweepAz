@@ -1,6 +1,8 @@
 from django.db import models
 import math
 from random import randrange
+import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 
 class Player(models.Model):
     username = models.TextField(unique=True, max_length=20)
@@ -35,7 +37,7 @@ class Tile(models.Model):
     x = models.IntegerField()
     y = models.IntegerField()
     index = models.IntegerField()
-    heat_value = models.FloatField(default=0.0)
+    heat_value = models.CharField(max_length=7, default="#000000")
     a_revealed = models.BooleanField(default=False)
     b_revealed = models.BooleanField(default=False)
     game = models.ForeignKey('heatsweep.Game', related_name="tile_game", on_delete=models.CASCADE)
@@ -44,10 +46,17 @@ class Tile(models.Model):
     Setter method to update the status of a Tile
     Automatically reveals the tile to player 1/player 2 if they are set as the new owner
     '''
-    def set_status(self, status):
-        if self.status != Tile.EMPTY:
+    def set_status(self, status, h_x, h_y, g):
+        if self.status == status or self.status == Tile.H:
             return False
+
+        max_dist = g * math.sqrt(2)
+        dist = math.sqrt((h_x - self.x)**2 + (h_y - self.y)**2)
+        sigma = math.sqrt(g)
+        heat = math.exp(-((dist**2)/(2*sigma**2)))
+
         self.status = status
+        self.heat_value = Tile.get_color(heat)
         self.save()
 
         # # reveal the tile if applicable
@@ -56,6 +65,19 @@ class Tile(models.Model):
         # elif status == Tile.B:
         #     self.reveal_b()
         return True
+
+    @staticmethod
+    def get_color(heatValue):
+        # Define the colormap and normalization function
+        cmap = plt.get_cmap('hot')
+        
+        # Convert the normalized heat value to an RGB color
+        color = cmap(heatValue)
+        
+        # Convert the RGB color to a hex color code
+        hex_color = mcolors.rgb2hex(color)
+        
+        return hex_color
     
     '''
     Reveals the tile to player a.
@@ -100,10 +122,10 @@ class Tile(models.Model):
         pass
 
 class Game(models.Model):
-    GRID_SIZE = 5
+    GRID_SIZE = 7
     GRID_X = GRID_SIZE
     GRID_Y = GRID_SIZE
-    MARGIN = 1
+    MARGIN = 2
     ELO_FACTOR = 30
     
     player_a = models.ForeignKey(Player, related_name="game_player_a", null=True, blank=True, on_delete=models.CASCADE)
@@ -131,18 +153,11 @@ class Game(models.Model):
 
         return game     
 
-    '''
-    Converts a player string, such as 'a', or 'b', to its corresponding Tile status value. 
-    '''
-    @staticmethod
-    def toStatus(player: str):
-        if player == 'a':
+    def toStatus(self, player):
+        if player == self.player_a:
             return Tile.A
-        elif player == 'b':
-            return Tile.B
-        else:
-            raise ValueError("passing invalid player to toStatus")
-        return game        
+        elif player == self.player_b:
+            return Tile.B     
 
     def get_all_tiles(self):
         return Tile.objects.filter(game=self).order_by('index')
@@ -174,6 +189,11 @@ class Game(models.Model):
         x = tile.x
         y = tile.y
 
+        if (player == self.player_a and x == self.b_x and y == self.b_y):
+            return False
+        if (player == self.player_b and x == self.a_x and y == self.a_y):
+            return False
+
         status = Tile.A
         if (x == self.hotspot_x and y == self.hotspot_y):
             status = Tile.H
@@ -182,7 +202,7 @@ class Game(models.Model):
         elif (player == self.player_b):
             status = Tile.B
 
-        if not tile.set_status(status):
+        if not tile.set_status(status, self.hotspot_x, self.hotspot_y, Game.GRID_SIZE):
             return False
 
         self.next_turn()
@@ -195,6 +215,10 @@ class Game(models.Model):
         # a_y = randrange(0,Game.GRID_Y/4)
         # b_x = randrange(Game.GRID_X/4,3*Game.GRID_X/4-1)
         # b_y = randrange(0,Game.GRID_Y/4)
+
+        # TODO TODO TODO: updpate to better hotspot algorithm below
+        self.hotspot_x = randrange(0, Game.GRID_SIZE-(Game.MARGIN*2)-1) + Game.MARGIN
+        self.hotspot_y = randrange(0, Game.GRID_SIZE-(Game.MARGIN*2)-1) + Game.MARGIN
         
         corners = (0, Game.GRID_SIZE-1)
         a_x = corners[randrange(0,2)]
@@ -206,18 +230,14 @@ class Game(models.Model):
             b_x = corners[randrange(0,2)]
             b_y = corners[randrange(0,2)]
 
-        self.get_tile_at(a_x, a_y).set_status(Tile.A)
-        self.get_tile_at(b_x, b_y).set_status(Tile.B)
+        self.get_tile_at(a_x, a_y).set_status(Tile.A, self.hotspot_x, self.hotspot_y, Game.GRID_SIZE)
+        self.get_tile_at(b_x, b_y).set_status(Tile.B, self.hotspot_x, self.hotspot_y, Game.GRID_SIZE)
 
         self.a_x = a_x
         self.a_y = a_y
         self.b_x = b_x
         self.b_y = b_y
-
-        # TODO TODO TODO: updpate to better hotspot algorithm below
-        self.hotspot_x = randrange(0, Game.GRID_SIZE-(Game.MARGIN*2)-1) + Game.MARGIN
-        self.hotspot_y = randrange(0, Game.GRID_SIZE-(Game.MARGIN*2)-1) + Game.MARGIN
-
+        
         '''
         # hotspot should be equidistant from both players
         # all points on the line perpendicular to (a_x, a_y) -- (b_x, b_y) satisfy this constraint
@@ -290,19 +310,20 @@ class Game(models.Model):
         coords = []
         for xi in [x-1, x, x+1]:
             for yi in [y-1, y, y+1]:
-                if 0 <= xi < self.GRID_X and 0 <= yi < self.GRID_Y: # make sure coords within grid
+                if 0 <= xi < self.GRID_X and 0 <= yi < self.GRID_Y and not (x == y and xi == x): # make sure coords within grid
                     coords.append((xi, yi))
         return coords
 
     def process_adjacent(self, x, y, player, checked):
         checked[y][x] = 1 # mark current coord as checked
 
+        print(checked)
         for (xi, yi) in self.get_adjacent(x, y):
             # base case: hotspot is adjacent to us
             if (xi, yi) == (self.hotspot_x, self.hotspot_y):
                 return True
             
-            if checked[yi][xi] == 0 and self.get_tile_at(xi, yi).status == player:
+            if checked[yi][xi] == 0 and self.get_tile_at(xi, yi).status == self.toStatus(player):
                 # recurse on adjacent un-checked squares owned by player
                 if self.process_adjacent(xi, yi, player, checked):
                     return True
@@ -318,11 +339,12 @@ class Game(models.Model):
             return False
         
         # recursively build out pathway from hotspot
-        checkedGrid = self.empty_grid() # initialize matrix of 0s
+        checkedGrid = self.empty_grid() # initialize matrix of 0s'
         if player == self.player_a:
-            return self.process_adjacent(self.a_x, self.a_y, self.player_a, checkedGrid)
+            print(self.get_adjacent(self.hotspot_x, self.hotspot_y))
+            return self.process_adjacent(self.a_x, self.a_y, player, checkedGrid)
         elif player == self.player_b:
-            return self.process_adjacent(self.b_x, self.b_y, self.player_b, checkedGrid)
+            return self.process_adjacent(self.b_x, self.b_y, player, checkedGrid)
         
     def next_turn(self):
         if self.check_win(self.current_turn):

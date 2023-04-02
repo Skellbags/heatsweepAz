@@ -2,6 +2,7 @@ Django
 django-cors-headers
 django-extensions
 djangorestframework
+matplotlib
 PyJWT
 six
 psycopg2

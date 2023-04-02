@@ -46,8 +46,12 @@ class GameView(APIView):
 
         if (player != game.player_a and player != game.player_b):
             return Response({'error': 'Player has not joined game'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if (game.winner != None):
+            status = False
+        else:
+            status = game.flip(kwargs['index'], player)
 
-        status = game.flip(kwargs['index'], player)
         return Response({'status': 'true' if status else 'false'})
 
 class LobbyView(APIView):
@@ -62,6 +66,9 @@ class LobbyView(APIView):
 
         if game.player_b != None:
             return Response({'error': 'Cannot join full game'}, status=status.HTTP_400_BAD_REQUEST)
+        if game.player_a == player:
+            game_serializer = GameSerializer(game)
+            return Response(game_serializer.data)
             
         game.player_b = player
         game.save()
