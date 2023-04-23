@@ -1,6 +1,7 @@
 # Choose the Image which has Node installed already
 FROM node:lts-alpine
 
+COPY package*.json ./
 COPY . /app
 
 WORKDIR /app
