@@ -2,14 +2,15 @@ version: '3'
 
 services:
   db:
-    image: postgres
+    image: heatsweepazaci.azurecr.io/postgres
     # volumes:
     #   - ./data/db:/var/lib/postgresql/data
     environment:
       - POSTGRES_DB=postgres
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_PASSWORD=Password1
   backend:
+    image: heatsweepazaci.azurecr.io/heatsweepaz_backend
     build: 
       context: ./backend
       dockerfile: Dockerfile
@@ -20,10 +21,11 @@ services:
     environment:
       - POSTGRES_NAME=postgres
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_PASSWORD=Password1
     depends_on:
       - db
   frontend:
+    image: heatsweepazaci.azurecr.io/heatsweepaz_frontend
     build: 
       context: ./frontend
       dockerfile: Dockerfile 

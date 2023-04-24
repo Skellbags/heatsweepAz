@@ -4,6 +4,8 @@ FROM node:lts-alpine
 COPY package*.json ./
 COPY . /app
 
+EXPOSE 80
+
 WORKDIR /app
 
 RUN npm install
